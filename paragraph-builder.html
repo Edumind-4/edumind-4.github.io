@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Paragraph Builder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f9;
+      color: #333;
+    }
+    header {
+      background: #003366;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    main {
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+    }
+    .step {
+      background: white;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    #preview {
+      background: #fffbe0;
+      padding: 15px;
+      border-radius: 10px;
+      min-height: 100px;
+      white-space: pre-wrap;
+    }
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+    }
+    ul#detailsList {
+      list-style: none;
+      padding: 0;
+    }
+    ul#detailsList li {
+      margin: 5px 0;
+      padding: 5px;
+      border: 1px dashed #ccc;
+      border-radius: 5px;
+      background: #fafafa;
+    }
+    .actions button {
+      margin-right: 10px;
+      padding: 8px 15px;
+    }
+    #badge {
+      margin-top: 10px;
+      font-size: 1.2em;
+      color: #d2691e;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Interactive Paragraph Builder</h1>
+  <a href="index.html" style="color:white;">&larr; Back to Home</a>
+</header>
+<main>
+  <div class="step">
+    <h2>1. Choose a Topic</h2>
+    <select id="topicSelect">
+      <option value="Describe your favorite place">Describe your favorite place</option>
+      <option value="Explain how to care for a pet">Explain how to care for a pet</option>
+      <option value="Narrate a memorable trip">Narrate a memorable trip</option>
+      <option value="State your opinion on a school rule">State your opinion on a school rule</option>
+      <option value="custom">Other (type your own)</option>
+    </select>
+    <input type="text" id="customTopic" placeholder="Your topic" style="display:none;" />
+  </div>
+
+  <div class="step">
+    <h2>2. Topic Sentence</h2>
+    <input type="text" id="topicSentence" placeholder="Write your topic sentence" spellcheck="true" />
+  </div>
+
+  <div class="step">
+    <h2>3. Supporting Details</h2>
+    <ul id="detailsList">
+      <li draggable="true"><textarea spellcheck="true" placeholder="Detail 1"></textarea></li>
+      <li draggable="true"><textarea spellcheck="true" placeholder="Detail 2"></textarea></li>
+      <li draggable="true"><textarea spellcheck="true" placeholder="Detail 3"></textarea></li>
+    </ul>
+    <button id="addDetail">Add Detail</button>
+  </div>
+
+  <div class="step">
+    <h2>4. Transitional Phrase</h2>
+    <select id="transition">
+      <option value="">-- none --</option>
+      <option value="Additionally,">Additionally,</option>
+      <option value="Moreover,">Moreover,</option>
+      <option value="Furthermore,">Furthermore,</option>
+      <option value="Finally,">Finally,</option>
+    </select>
+  </div>
+
+  <div class="step">
+    <h2>5. Concluding Sentence</h2>
+    <input type="text" id="conclusion" placeholder="Concluding sentence" spellcheck="true" />
+  </div>
+
+  <div class="step">
+    <h2>Live Preview</h2>
+    <div id="preview"></div>
+  </div>
+
+  <div class="actions">
+    <button id="saveParagraph">Save</button>
+    <button id="copyParagraph">Copy</button>
+    <button id="printParagraph">Print</button>
+  </div>
+  <div id="badge" style="display:none;">🏆 Paragraph Complete!</div>
+</main>
+
+<script>
+(function(){
+  const topicSelect = document.getElementById('topicSelect');
+  const customTopic = document.getElementById('customTopic');
+  const topicSentence = document.getElementById('topicSentence');
+  const detailsList = document.getElementById('detailsList');
+  const transition = document.getElementById('transition');
+  const conclusion = document.getElementById('conclusion');
+  const preview = document.getElementById('preview');
+  const badge = document.getElementById('badge');
+
+  topicSelect.addEventListener('change', () => {
+    customTopic.style.display = topicSelect.value === 'custom' ? 'block' : 'none';
+    updatePreview();
+  });
+
+  [topicSentence, transition, conclusion, customTopic].forEach(el => {
+    el.addEventListener('input', updatePreview);
+  });
+
+  detailsList.addEventListener('input', updatePreview);
+
+  document.getElementById('addDetail').addEventListener('click', () => {
+    const li = document.createElement('li');
+    li.draggable = true;
+    li.innerHTML = '<textarea spellcheck="true" placeholder="More detail"></textarea>';
+    detailsList.appendChild(li);
+  });
+
+  detailsList.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', e.target.dataset.index);
+    e.dataTransfer.effectAllowed = 'move';
+    dragSrcEl = e.target;
+  });
+
+  detailsList.addEventListener('dragover', e => {
+    e.preventDefault();
+  });
+
+  detailsList.addEventListener('drop', e => {
+    e.preventDefault();
+    if(dragSrcEl && e.target.closest('li')){
+      detailsList.insertBefore(dragSrcEl, e.target.closest('li'));
+      updatePreview();
+    }
+  });
+
+  function gatherParagraph(){
+    const topic = topicSelect.value === 'custom' ? customTopic.value : topicSelect.value;
+    const details = Array.from(detailsList.querySelectorAll('textarea')).map(t => t.value.trim()).filter(Boolean);
+    const sentences = [];
+    if(topicSentence.value.trim()) sentences.push(topicSentence.value.trim());
+    details.forEach((d,i) => {
+      if(i===0 && transition.value) {
+        sentences.push(transition.value + ' ' + d);
+      } else {
+        sentences.push(d);
+      }
+    });
+    if(conclusion.value.trim()) sentences.push(conclusion.value.trim());
+    return {topic, sentences};
+  }
+
+  function updatePreview(){
+    const {sentences} = gatherParagraph();
+    preview.textContent = sentences.join(' ');
+    badge.style.display = sentences.length >= 5 ? 'block' : 'none';
+  }
+
+  document.getElementById('copyParagraph').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(preview.textContent);
+    alert('Paragraph copied to clipboard!');
+  });
+
+  document.getElementById('printParagraph').addEventListener('click', () => {
+    const w = window.open('', '', 'width=600,height=400');
+    w.document.write('<pre>' + preview.textContent + '</pre>');
+    w.print();
+    w.close();
+  });
+
+  document.getElementById('saveParagraph').addEventListener('click', () => {
+    const {topic, sentences} = gatherParagraph();
+    const stored = JSON.parse(localStorage.getItem('paragraphs') || '[]');
+    stored.push({date: new Date().toISOString(), topic, text: sentences.join(' ')});
+    localStorage.setItem('paragraphs', JSON.stringify(stored));
+    alert('Paragraph saved!');
+  });
+
+  updatePreview();
+})();
+</script>
+</body>
+</html>
